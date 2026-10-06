@@ -1,0 +1,23 @@
+# Super JinX regional PasarGuard Node for Railway
+FROM pasarguard/node:latest
+
+RUN apt-get update && apt-get install -y --no-install-recommends nginx openssl ca-certificates curl python3 \
+ && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default
+
+COPY node-nginx.conf.template /etc/nginx/nginx.conf.template
+COPY node-entrypoint.sh /entrypoint.sh
+COPY node-healthcheck.sh /usr/local/bin/jinx-node-healthcheck
+
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/jinx-node-healthcheck /etc/nginx/nginx.conf.template \
+ && chmod +x /entrypoint.sh /usr/local/bin/jinx-node-healthcheck /app/main /usr/local/bin/xray
+
+ENV PORT=8080 \
+    NODE_HOST=0.0.0.0 \
+    SERVICE_PORT=62050 \
+    SERVICE_PROTOCOL=grpc \
+    XRAY_EXECUTABLE_PATH=/usr/local/bin/xray \
+    XRAY_ASSETS_PATH=/usr/local/share/xray
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD jinx-node-healthcheck || exit 1
+ENTRYPOINT ["/entrypoint.sh"]
